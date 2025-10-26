@@ -12,6 +12,7 @@ mod data {
 
 mod repository {
     pub mod deck_repository;
+    pub mod review_repository;
     pub mod repository;
 }
 

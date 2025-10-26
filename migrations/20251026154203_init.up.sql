@@ -30,7 +30,7 @@ CREATE INDEX idx_cards_deck_name ON cards(deck_name);
 CREATE TABLE card_state (
   card_id         INTEGER PRIMARY KEY REFERENCES cards(id) ON DELETE CASCADE,
   next_review_s   INTEGER NOT NULL DEFAULT (strftime('%s','now')),
-  interval_days   INTEGER NOT NULL DEFAULT 0,
+  interval_days   INTEGER NOT NULL DEFAULT 1,
   ease            INTEGER NOT NULL DEFAULT 2500,
   reps            INTEGER NOT NULL DEFAULT 0,
   lapses          INTEGER NOT NULL DEFAULT 0,

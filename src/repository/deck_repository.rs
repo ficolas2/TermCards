@@ -38,6 +38,18 @@ impl Repository {
                 .bind(serde_json::to_string(&card.volume_mounts).unwrap())
                 .fetch_one(&mut *tx)
                 .await?;
+
+            sqlx::query(
+                r#"
+                INSERT INTO card_state 
+                    (card_id)
+                VALUES
+                    (?)
+            "#,
+            )
+            .bind(card.id)
+            .execute(&mut *tx)
+            .await?;
             ord += 1;
         }
 
