@@ -1,5 +1,5 @@
 use anyhow::Result;
-use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
+use crossterm::{event::{self, Event, KeyCode}, terminal::{disable_raw_mode, enable_raw_mode}};
 use libc::c_int;
 use portable_pty::{CommandBuilder, PtySize, native_pty_system};
 use std::{
@@ -183,11 +183,25 @@ fn run_sandboxed_card(card: Card) -> Result<()> {
             \x1b[1;32mGood (3)\x1b[0m  /  \
             \x1b[1;34mEasy (4)\x1b[0m\n"
         );
+        enable_raw_mode()?;
+        loop {
+            if let Event::Key(key_event) = event::read()? {
+                match key_event.code {
+                    KeyCode::Char('1') => break,
+                    KeyCode::Char('2') => break,
+                    KeyCode::Char('3') => break,
+                    KeyCode::Char('4') => break,
+                    _ => {}
+                }
+            }
+        }
     } else {
         println!(
             "\n\x1b[1;31mCorrect answer was:\x1b[0m {}\n",
             card.expected_input
-        )
+        );
+        event::read()?;
     }
+    disable_raw_mode()?;
     Ok(())
 }
