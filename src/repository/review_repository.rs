@@ -1,4 +1,4 @@
-use crate::data::card::{Card, CardState};
+use crate::domain::{card::Card, card_state::CardState};
 
 use super::repository::{Repository, RepositoryError};
 

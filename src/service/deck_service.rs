@@ -1,7 +1,7 @@
 use std::{fs, io, path::Path};
 use thiserror::Error;
 
-use crate::{data::deck::Deck, repository::repository::RepositoryError};
+use crate::{domain::deck::Deck, repository::repository::RepositoryError};
 
 use super::service::Service;
 

@@ -1,5 +1,5 @@
 use crate::{
-    data::{card::Card, deck::Deck},
+    domain::{card::Card, deck::Deck},
     repository::repository::RepositoryError,
 };
 use atty::Stream;

@@ -1,17 +1,4 @@
-use serde::{Deserialize, Serialize};
-use sqlx::{prelude::FromRow, sqlite, Type};
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct Card {
-    #[serde(default)]
-    pub id: i64,
-    pub volume_mounts: Vec<(String, String)>,
-    pub expected_output: String,
-    pub expected_input: String,
-    pub command: Option<String>,
-    pub docker_image: String,
-    pub work_dir: Option<String>,
-}
+use sqlx::{prelude::FromRow, Type};
 
 #[derive(Debug, FromRow)]
 pub struct CardState {
@@ -46,4 +33,5 @@ impl From<i64> for CardLearnStatus {
         }
     }
 }
+
 

@@ -1,4 +1,4 @@
-use crate::data::{card::Card, deck::Deck};
+use crate::domain::{card::Card, deck::Deck};
 use sqlx::{Sqlite, Transaction};
 
 use super::repository::{Repository, RepositoryError};

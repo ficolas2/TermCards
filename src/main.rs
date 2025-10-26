@@ -5,8 +5,9 @@ use service::service::Service;
 
 mod args;
 
-mod data {
+mod domain {
     pub mod card;
+    pub mod card_state;
     pub mod deck;
 }
 
