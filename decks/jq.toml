@@ -1,0 +1,27 @@
+name = "jq"
+description = "Learn how to filter, transform, and extract data from JSON using jq. This deck covers practical command examples, from simple field selection to more complex queries."
+
+[[cards]]
+expected_output = "\n42\n"
+expected_input = "jq .id login.json"
+docker_image = "docker-image"
+work_dir = "/root/json"
+volume_mounts = [["/home/nicolas/projects/termcards/volumes/json/login", "/root/json"]]
+command = """ 
+printf "\\x1b[1;31mExtract the user -> id field from test.json\\x1b[0m\n"
+jq . login.json;\
+exec bash
+"""
+
+[[cards]]
+expected_output = "\neyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9eyJ1aWQiOjQyfUhleSBsb29rLCBhIHNlY3JldCBtZXNzYWdlISB0aGlzIGlzIG5vdCBhY3R1YWxseSBhIHRva2Vu\n"
+expected_input = "jq .token -r login.json"
+docker_image = "docker-image"
+work_dir = "/root/json"
+volume_mounts = [["/home/nicolas/projects/termcards/volumes/json/login", "/root/json"]]
+command = """ 
+printf "\\x1b[1;31mExtract the token from test.json\\x1b[0m\n"
+printf "\\x1b[31mGet rid of the quotes too, you may want to use it directly!\\x1b[0m\n"
+jq . login.json;\
+exec bash
+"""
