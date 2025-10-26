@@ -1,0 +1,6 @@
+# build jq once, reuse forever
+FROM debian:bookworm-slim
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    bash coreutils findutils jq grep sed && rm -rf /var/lib/apt/lists/*
+WORKDIR /root
+ENTRYPOINT ["bash"]
