@@ -10,4 +10,6 @@ pub struct Args {
 pub enum Commands {
     #[command(about = "Import a deck")]
     Import { path: String },
+    #[command(about = "Review a deck")]
+    Review { deck_name: String },
 }

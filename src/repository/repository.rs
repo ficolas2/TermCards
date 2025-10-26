@@ -30,6 +30,9 @@ pub enum CreateRepositoryError {
 pub enum RepositoryError {
     #[error("database error: {0}")]
     Sqlx(#[from] sqlx::Error),
+
+    #[error("not found: {0} {1}")]
+    NotFound(String, String),
 }
 
 impl Repository {

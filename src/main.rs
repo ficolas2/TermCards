@@ -29,7 +29,10 @@ async fn main() -> anyhow::Result<()> {
     let service = Service::new(repository);
 
     match args.command {
-        Commands::Import { path } => service.import_deck(path).await?,
+        Commands::Import { path } => {
+            service.import_deck(path).await?;
+        }
+        Commands::Review { deck_name } => service.review_full_deck_by_name(deck_name).await?,
     };
     Ok(())
 }

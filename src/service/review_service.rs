@@ -1,5 +1,8 @@
-use crate::data::card::Card;
-use anyhow::Result;
+use crate::{
+    data::{card::Card, deck::Deck},
+    repository::repository::RepositoryError,
+};
+use atty::Stream;
 use crossterm::{
     event::{self, Event, KeyCode},
     terminal::{disable_raw_mode, enable_raw_mode},
@@ -11,19 +14,42 @@ use std::{
     os::unix::io::AsRawFd,
 };
 
+use super::service::Service;
+
 const POLL_TIME_MS: c_int = 30;
 
-pub fn run_sandboxed_card(card: Card) -> Result<()> {
+impl Service {
+    pub async fn review_full_deck_by_name(&self, deck_name: String) -> Result<(), RepositoryError> {
+        let deck = self.repository.get_deck(&deck_name).await?;
+        self.review_full_deck(deck);
+        Ok(())
+    }
+
+    pub fn review_full_deck(&self, deck: Deck) {
+        for card in deck.cards {
+            run_sandboxed_card(card);
+        }
+    }
+}
+
+fn run_sandboxed_card(card: Card) {
+    if !atty::is(Stream::Stdin) || !atty::is(Stream::Stdout) {
+        eprintln!("TTY required");
+        std::process::exit(2);
+    }
+
     print!("\x1b[2J\x1b[H");
     let mut success = false;
     unsafe {
         let pty = native_pty_system();
-        let pair = pty.openpty(PtySize {
-            rows: 24,
-            cols: 80,
-            pixel_width: 0,
-            pixel_height: 0,
-        })?;
+        let pair = pty
+            .openpty(PtySize {
+                rows: 24,
+                cols: 80,
+                pixel_width: 0,
+                pixel_height: 0,
+            })
+            .unwrap();
 
         let mut cmd = CommandBuilder::new("docker");
         cmd.arg("run");
@@ -44,8 +70,8 @@ pub fn run_sandboxed_card(card: Card) -> Result<()> {
             cmd.arg(command);
         }
 
-        enable_raw_mode()?;
-        let mut child = pair.slave.spawn_command(cmd)?;
+        enable_raw_mode().unwrap();
+        let mut child = pair.slave.spawn_command(cmd).unwrap();
 
         let pty_fd = pair.master.as_raw_fd().unwrap();
         let stdin_fd = io::stdin().as_raw_fd();
@@ -55,7 +81,7 @@ pub fn run_sandboxed_card(card: Card) -> Result<()> {
         let mut acc: Vec<u8> = Vec::new();
 
         loop {
-            if let Some(_st) = child.try_wait()? {
+            if let Some(_st) = child.try_wait().unwrap() {
                 break;
             }
 
@@ -86,8 +112,8 @@ pub fn run_sandboxed_card(card: Card) -> Result<()> {
                 if n <= 0 {
                     break;
                 }
-                io::stdout().write_all(&buf[..n as usize])?;
-                io::stdout().flush()?;
+                io::stdout().write_all(&buf[..n as usize]).unwrap();
+                io::stdout().flush().unwrap();
                 push_normalized(&mut acc, &buf[..n as usize]);
                 if acc.windows(exp.len()).any(|w| w == exp) {
                     success = true;
@@ -112,7 +138,7 @@ pub fn run_sandboxed_card(card: Card) -> Result<()> {
             }
         }
     }
-    disable_raw_mode()?;
+    disable_raw_mode().unwrap();
     if success {
         println!("\n\x1b[1;32mCorrect output!\x1b[0m\x1b[1;32m");
         println!("Expected input was: \x1b[0m{}", card.expected_input);
@@ -122,9 +148,9 @@ pub fn run_sandboxed_card(card: Card) -> Result<()> {
             \x1b[1;32mGood (3)\x1b[0m  /  \
             \x1b[1;34mEasy (4)\x1b[0m\n"
         );
-        enable_raw_mode()?;
+        enable_raw_mode().unwrap();
         loop {
-            if let Event::Key(key_event) = event::read()? {
+            if let Event::Key(key_event) = event::read().unwrap() {
                 match key_event.code {
                     KeyCode::Char('1') => break,
                     KeyCode::Char('2') => break,
@@ -139,10 +165,9 @@ pub fn run_sandboxed_card(card: Card) -> Result<()> {
             "\n\x1b[1;31mCorrect answer was:\x1b[0m {}\n",
             card.expected_input
         );
-        event::read()?;
+        event::read().unwrap();
     }
-    disable_raw_mode()?;
-    Ok(())
+    disable_raw_mode().unwrap();
 }
 
 fn push_normalized(acc: &mut Vec<u8>, chunk: &[u8]) {
