@@ -1,40 +1,27 @@
 use anyhow::Result;
 use crossterm::{event::{self, Event, KeyCode}, terminal::{disable_raw_mode, enable_raw_mode}};
+use data::card::Card;
 use libc::c_int;
 use portable_pty::{CommandBuilder, PtySize, native_pty_system};
 use std::{
     io::{self, Write},
     os::unix::io::AsRawFd,
 };
+use crate::data::deck::Deck;
 
-struct Card {
-    volume_mounts: Vec<(String, String)>,
-    expected_output: String,
-    expected_input: String,
-    command: Option<String>,
-    work_dir: Option<String>,
+mod data {
+    pub mod card;
+    pub mod deck;
 }
 
 const POLL_TIME_MS: c_int = 30;
 
 fn main() -> Result<()> {
-    run_sandboxed_card(Card {
-        volume_mounts: vec![(
-            "/home/nicolas/projects/termcards/volumes/json/login/".to_string(),
-            "/root/json".to_string(),
-        )],
-        expected_output: "\neyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9eyJ1aWQiOjQyfUhleSBsb29rLCBhIHNlY3JldCBtZXNzYWdlISB0aGlzIGlzIG5vdCBhY3R1YWxseSBhIHRva2Vu\n".to_string(),
-        expected_input: "jq .token -r login.json".to_string(),
-        command: Some(
-            r#"
-                printf "\x1b[1;31mExtract the token from test.json\x1b[0m\n"
-                printf "\x1b[31mGet rid of the quotes too, you may want to use it directly!\x1b[0m\n"
-                jq . login.json;\
-                exec bash
-            "#.to_string(),
-        ),
-        work_dir: Some("/root/json".to_string()),
-    })
+    let deck = Deck::import("./decks/jq.toml")?;
+    for card in deck.cards {
+        run_sandboxed_card(card)?;
+    }
+    Ok(())
 }
 
 fn push_normalized(acc: &mut Vec<u8>, chunk: &[u8]) {
