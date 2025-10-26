@@ -1,20 +1,35 @@
-use crate::data::deck::Deck;
-use anyhow::Result;
-use service::review::run_sandboxed_card;
+use args::{Args, Commands};
+use clap::Parser;
+use repository::repository::Repository;
+use service::service::Service;
+
+mod args;
 
 mod data {
     pub mod card;
     pub mod deck;
 }
 
-mod service {
-    pub mod review_service;
+mod repository {
+    pub mod deck_repository;
+    pub mod repository;
 }
 
-fn main() -> Result<()> {
-    let deck = Deck::import("./decks/jq.toml")?;
-    for card in deck.cards {
-        run_sandboxed_card(card)?;
-    }
+mod service {
+    pub mod deck_service;
+    pub mod review_service;
+    pub mod service;
+}
+
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
+    let args = Args::parse();
+
+    let repository = Repository::new().await?;
+    let service = Service::new(repository);
+
+    match args.command {
+        Commands::Import { path } => service.import_deck(path).await?,
+    };
     Ok(())
 }
