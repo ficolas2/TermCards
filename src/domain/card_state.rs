@@ -5,7 +5,7 @@ use std::{
 
 use sqlx::{Type, prelude::FromRow};
 
-#[derive(Debug, FromRow)]
+#[derive(Debug, FromRow, Clone)]
 pub struct CardState {
     pub card_id: i64,
     pub next_review_s: i64,

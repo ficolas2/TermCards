@@ -1,10 +1,10 @@
 use args::{Args, Commands};
 use clap::Parser;
 use crossterm::style::Stylize;
-use domain::card_state::{CardLearnStatus, CardState};
+use domain::{card::Card, card_state::{CardLearnStatus, CardState}};
 use repository::repository::Repository;
 use service::service::Service;
-use utils::time_utils::now_s;
+use utils::time_utils::{format_until_duration, now_s};
 
 mod args;
 
@@ -50,31 +50,49 @@ async fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-fn print_deck_state(deck_name: &str, card_state_list: Vec<CardState>) {
+fn print_deck_state(deck_name: &str, card_state_list: Vec<(Card, CardState)>) {
     if card_state_list.is_empty() {
         println!("No cards found");
         return;
     }
     let new = card_state_list
         .iter()
-        .filter(|cs| cs.status == CardLearnStatus::New)
+        .filter(|cs| cs.1.status == CardLearnStatus::New)
         .count();
     let learn = card_state_list
         .iter()
-        .filter(|cs| cs.status == CardLearnStatus::Learn)
+        .filter(|cs| cs.1.status == CardLearnStatus::Learn)
         .count();
     let to_review = card_state_list
         .iter()
-        .filter(|cs| cs.status == CardLearnStatus::Review && cs.next_review_s < now_s())
+        .filter(|cs| cs.1.status == CardLearnStatus::Review && cs.1.next_review_s < now_s())
         .count();
     let total_cards = card_state_list.iter().count();
 
     println!(
-        "  {} {} {} {}    {}",
-        format!("{deck_name:<20}").bold(),
+        "{}   {} {} {}    {}",
+        format!("{deck_name}").bold(),
         format!("{new:>4}").bold().blue(),
         format!("{learn:>4}").bold().red(),
         format!("{to_review:>4}").bold().green(),
         format!("Total cards: {total_cards}").dark_grey(),
     );
+
+    for (i, (_, card_state)) in card_state_list.iter().enumerate() {
+        let status_str = match card_state.status {
+            CardLearnStatus::New => "New".to_string().blue().bold(),
+            CardLearnStatus::Learn => "Learn".to_string().red().bold(),
+            CardLearnStatus::Review => {
+                if card_state.next_review_s < now_s() {
+                    "Review".to_string().green().bold()
+                } else {
+                    format_until_duration(card_state.next_review_s - now_s()).dark_grey()
+                }
+            },
+        };
+        println!(
+            "    {} {}",
+            i, status_str
+        )
+    }
 }
