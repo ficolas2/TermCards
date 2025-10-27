@@ -1,7 +1,7 @@
 use std::{fs, io, path::Path};
 use thiserror::Error;
 
-use crate::{domain::deck::Deck, repository::repository::RepositoryError};
+use crate::{domain::{card_state::CardState, deck::Deck}, repository::repository::RepositoryError};
 
 use super::service::Service;
 
@@ -25,5 +25,9 @@ impl Service {
         let deck = self.repository.save_deck(deck).await?;
 
         Ok(deck)
+    }
+
+    pub async fn get_deck_state(&self, deck_name: &str) -> Result<Vec<CardState>, RepositoryError> {
+        self.repository.get_deck_card_states(deck_name).await
     }
 }

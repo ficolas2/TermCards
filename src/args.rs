@@ -12,4 +12,6 @@ pub enum Commands {
     Import { path: String },
     #[command(about = "Review a deck")]
     Review { deck_name: String },
+    #[command(about = "Get the state of a deck")]
+    State { deck_name: String },
 }

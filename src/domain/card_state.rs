@@ -1,5 +1,4 @@
 use std::{
-    cmp::max,
     time::{SystemTime, UNIX_EPOCH},
     usize,
 };
