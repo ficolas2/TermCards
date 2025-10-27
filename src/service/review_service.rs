@@ -1,5 +1,5 @@
 use crate::{
-    domain::{card::Card, deck::Deck},
+    domain::{card::Card, card_state::ReviewResult, deck::Deck},
     repository::repository::RepositoryError,
 };
 use atty::Stream;
@@ -19,6 +19,17 @@ use super::service::Service;
 const POLL_TIME_MS: c_int = 30;
 
 impl Service {
+    pub async fn review(&self, deck_name: String) -> Result<(), RepositoryError> {
+        while let Some(card) = self.repository.get_next_card_to_review(&deck_name).await? {
+            let result = run_sandboxed_card(&card);
+            let mut card_state = self.repository.get_card_state(card.id).await?;
+            card_state.apply_review(result);
+            self.repository.set_card_state(card_state).await?;
+        }
+
+        Ok(())
+    }
+
     pub async fn review_full_deck_by_name(&self, deck_name: String) -> Result<(), RepositoryError> {
         let deck = self.repository.get_deck(&deck_name).await?;
         self.review_full_deck(deck);
@@ -27,12 +38,12 @@ impl Service {
 
     pub fn review_full_deck(&self, deck: Deck) {
         for card in deck.cards {
-            run_sandboxed_card(card);
+            run_sandboxed_card(&card);
         }
     }
 }
 
-fn run_sandboxed_card(card: Card) {
+fn run_sandboxed_card(card: &Card) -> ReviewResult {
     if !atty::is(Stream::Stdin) || !atty::is(Stream::Stdout) {
         eprintln!("TTY required");
         std::process::exit(2);
@@ -56,16 +67,16 @@ fn run_sandboxed_card(card: Card) {
         cmd.arg("-it");
         cmd.arg("--rm");
         cmd.arg("--network=none");
-        for (host, cont) in card.volume_mounts {
+        for (host, cont) in &card.volume_mounts {
             cmd.arg("-v");
             cmd.arg(format!("{host}:{cont}:ro"));
         }
-        if let Some(work_dir) = card.work_dir {
+        if let Some(work_dir) = &card.work_dir {
             cmd.arg("-w");
             cmd.arg(work_dir);
         }
         cmd.arg("docker-image");
-        if let Some(command) = card.command {
+        if let Some(command) = &card.command {
             cmd.arg("-c");
             cmd.arg(command);
         }
@@ -139,7 +150,7 @@ fn run_sandboxed_card(card: Card) {
         }
     }
     disable_raw_mode().unwrap();
-    if success {
+    let result = if success {
         println!("\n\x1b[1;32mCorrect output!\x1b[0m\x1b[1;32m");
         println!("Expected input was: \x1b[0m{}", card.expected_input);
         println!(
@@ -152,10 +163,10 @@ fn run_sandboxed_card(card: Card) {
         loop {
             if let Event::Key(key_event) = event::read().unwrap() {
                 match key_event.code {
-                    KeyCode::Char('1') => break,
-                    KeyCode::Char('2') => break,
-                    KeyCode::Char('3') => break,
-                    KeyCode::Char('4') => break,
+                    KeyCode::Char('1') => break ReviewResult::Again,
+                    KeyCode::Char('2') => break ReviewResult::Hard,
+                    KeyCode::Char('3') => break ReviewResult::Good,
+                    KeyCode::Char('4') => break ReviewResult::Easy,
                     _ => {}
                 }
             }
@@ -166,8 +177,11 @@ fn run_sandboxed_card(card: Card) {
             card.expected_input
         );
         event::read().unwrap();
-    }
+        ReviewResult::Again
+    };
     disable_raw_mode().unwrap();
+
+    result
 }
 
 fn push_normalized(acc: &mut Vec<u8>, chunk: &[u8]) {

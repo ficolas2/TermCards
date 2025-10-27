@@ -3,6 +3,49 @@ use crate::domain::{card::Card, card_state::CardState};
 use super::repository::{Repository, RepositoryError};
 
 impl Repository {
+    pub async fn get_next_card_to_review(
+        &self,
+        prefix: &str,
+    ) -> Result<Option<Card>, RepositoryError> {
+        let res = sqlx::query!(
+            r#"
+                SELECT 
+                    id,
+                    deck_name,
+                    expected_output,
+                    expected_input,
+                    command,
+                    docker_image,
+                    work_dir,
+                    volume_mounts,
+                    created_at,
+                    updated_at
+                FROM cards
+                JOIN card_state ON card_id = id
+                WHERE 
+                    deck_name LIKE ? || '%'
+                    AND next_review_s < strftime('%s', 'now')
+                ORDER BY next_review_s, ord
+            "#,
+            prefix
+        )
+        .fetch_optional(&self.pool)
+        .await?;
+        // TODO: fetch learning first
+        // TODO: fetch learning even if time hasn't arrived yet
+
+        Ok(res.map(|res| Card {
+            id: res.id,
+            volume_mounts: serde_json::from_str(&res.volume_mounts)
+                .expect("Invalid JSON in volume_mounts for card"),
+            expected_output: res.expected_output,
+            expected_input: res.expected_input,
+            command: res.command,
+            docker_image: res.docker_image,
+            work_dir: res.work_dir,
+        }))
+    }
+
     pub async fn get_card_state(&self, id: i64) -> Result<CardState, RepositoryError> {
         sqlx::query_as!(
             CardState,

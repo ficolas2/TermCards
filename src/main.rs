@@ -13,13 +13,14 @@ mod domain {
 
 mod repository {
     pub mod deck_repository;
-    pub mod review_repository;
     pub mod repository;
+    pub mod review_repository;
 }
 
 mod service {
     pub mod deck_service;
     pub mod review_service;
+    pub mod scheduler_service;
     pub mod service;
 }
 
@@ -34,7 +35,7 @@ async fn main() -> anyhow::Result<()> {
         Commands::Import { path } => {
             service.import_deck(path).await?;
         }
-        Commands::Review { deck_name } => service.review_full_deck_by_name(deck_name).await?,
+        Commands::Review { deck_name } => service.review(deck_name).await?,
     };
     Ok(())
 }
