@@ -1,0 +1,8 @@
+{
+  "sales": [
+    { "user": "Alice", "item": "Keyboard", "price": 49.99 },
+    { "user": "Alice", "item": "Mouse", "price": 19.99 },
+    { "user": "Bob", "item": "Monitor", "price": 199.99 },
+    { "user": "Eve", "item": "Cable", "price": 5.00 }
+  ]
+}

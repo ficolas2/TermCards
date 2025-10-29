@@ -19,6 +19,7 @@ CREATE TABLE cards (
     docker_image    TEXT NOT NULL,
     work_dir        TEXT,
     volume_mounts   TEXT NOT NULL, -- stored as JSON string
+    one_time        BOOL NOT NULL DEFAULT FALSE,
 
     created_at      INTEGER NOT NULL DEFAULT (strftime('%s','now')),
     updated_at      INTEGER NOT NULL DEFAULT (strftime('%s','now'))
@@ -35,8 +36,8 @@ CREATE TABLE card_state (
   reps            INTEGER NOT NULL DEFAULT 0,
   lapses          INTEGER NOT NULL DEFAULT 0,
                   
-  status          INTEGER NOT NULL DEFAULT 0, -- 0 new, 1 learn, 2 review, -1 suspended
-  learning_step   INTEGER NOT NULL DEFAULT 0 -- learning step, [1m, 10m, 1d] - +1 on Good, +2 on easy, queue set to review (2) if ok on 1d
+  status          INTEGER NOT NULL DEFAULT 0, -- 0 new, 1 learn, 2 review, -1 suspended, -2 reserved, -3 one time learned
+  learning_step   INTEGER NOT NULL DEFAULT 0  -- learning step, [1m, 10m, 1d] - +1 on Good, +2 on easy, queue set to review (2) if ok on 1d
 );
 
 CREATE INDEX idx_state_due ON card_state(next_review_s);

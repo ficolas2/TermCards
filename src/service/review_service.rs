@@ -23,7 +23,7 @@ impl Service {
         while let Some(card) = self.repository.get_next_card_to_review(&deck_name).await? {
             let result = run_sandboxed_card(&card);
             let mut card_state = self.repository.get_card_state(card.id).await?;
-            card_state.apply_review(result);
+            card_state.apply_review(result, card.one_time);
             self.repository.set_card_state(card_state).await?;
         }
 
@@ -153,12 +153,20 @@ fn run_sandboxed_card(card: &Card) -> ReviewResult {
     let result = if success {
         println!("\n\x1b[1;32mCorrect output!\x1b[0m\x1b[1;32m");
         println!("Expected input was: \x1b[0m{}", card.expected_input);
-        println!(
-            "\n\x1b[1;31mAgain (1)\x1b[0m  /  \
-            \x1b[1;33mHard (2)\x1b[0m  /  \
-            \x1b[1;32mGood (3)\x1b[0m  /  \
-            \x1b[1;34mEasy (4)\x1b[0m\n"
-        );
+        if card.one_time {
+            println!("\n\x1b[1;31mThis card will not repeat, as it is a learning card.\x1b[0m");
+            println!(
+                "\n\x1b[1;31mAgain (1)\x1b[0m  /  \
+                \x1b[1;34mLearned (2-4)\x1b[0m\n"
+            );
+        } else {
+            println!(
+                "\n\x1b[1;31mAgain (1)\x1b[0m  /  \
+                \x1b[1;33mHard (2)\x1b[0m  /  \
+                \x1b[1;32mGood (3)\x1b[0m  /  \
+                \x1b[1;34mEasy (4)\x1b[0m\n"
+            );
+        }
         enable_raw_mode().unwrap();
         loop {
             if let Event::Key(key_event) = event::read().unwrap() {

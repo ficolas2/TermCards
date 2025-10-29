@@ -1,7 +1,7 @@
 use args::{Args, Commands};
 use clap::Parser;
 use crossterm::style::Stylize;
-use domain::{card::Card, card_state::{CardLearnStatus, CardState}};
+use domain::{card::Card, card_state::{CardStatus, CardState}};
 use repository::repository::Repository;
 use service::service::Service;
 use utils::time_utils::{format_until_duration, now_s};
@@ -61,15 +61,15 @@ fn print_deck_state(deck_name: &str, card_state_list: Vec<(Card, CardState)>) {
     }
     let new = card_state_list
         .iter()
-        .filter(|cs| cs.1.status == CardLearnStatus::New)
+        .filter(|cs| cs.1.status == CardStatus::New)
         .count();
     let learn = card_state_list
         .iter()
-        .filter(|cs| cs.1.status == CardLearnStatus::Learn)
+        .filter(|cs| cs.1.status == CardStatus::Learn)
         .count();
     let to_review = card_state_list
         .iter()
-        .filter(|cs| cs.1.status == CardLearnStatus::Review && cs.1.next_review_s < now_s())
+        .filter(|cs| cs.1.status == CardStatus::Review && cs.1.next_review_s < now_s())
         .count();
     let total_cards = card_state_list.iter().count();
 
@@ -84,15 +84,16 @@ fn print_deck_state(deck_name: &str, card_state_list: Vec<(Card, CardState)>) {
 
     for (i, (_, card_state)) in card_state_list.iter().enumerate() {
         let status_str = match card_state.status {
-            CardLearnStatus::New => "New".to_string().blue().bold(),
-            CardLearnStatus::Learn => "Learn".to_string().red().bold(),
-            CardLearnStatus::Review => {
+            CardStatus::New => "New".to_string().blue().bold(),
+            CardStatus::Learn => "Learn".to_string().red().bold(),
+            CardStatus::Review => {
                 if card_state.next_review_s < now_s() {
                     "Review".to_string().green().bold()
                 } else {
                     format_until_duration(card_state.next_review_s - now_s()).dark_grey()
                 }
             },
+            CardStatus::OneTimeLearned => continue,
         };
         println!(
             "    {} {}",

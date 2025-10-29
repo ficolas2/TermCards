@@ -23,9 +23,9 @@ impl Repository {
         for card in deck.cards.iter_mut() {
             card.id = sqlx::query_scalar(r#"
                 INSERT INTO cards
-                    (deck_name, ord, expected_output, expected_input, command, docker_image, work_dir, volume_mounts)
+                    (deck_name, ord, expected_output, expected_input, command, docker_image, work_dir, volume_mounts, one_time)
                 VALUES
-                    (?,         ?,   ?,               ?,              ?,       ?,            ?,        ?)
+                    (?,         ?,   ?,               ?,              ?,       ?,            ?,        ?,             ?)
                 RETURNING id
                 "#)
                 .bind(&deck.name)
@@ -36,6 +36,7 @@ impl Repository {
                 .bind(&card.docker_image)
                 .bind(&card.work_dir)
                 .bind(serde_json::to_string(&card.volume_mounts).unwrap())
+                .bind(&card.one_time)
                 .fetch_one(&mut *tx)
                 .await?;
 
@@ -83,7 +84,8 @@ impl Repository {
                 command,
                 docker_image,
                 work_dir,
-                volume_mounts
+                volume_mounts,
+                one_time
             FROM cards
             WHERE deck_name = ?
             ORDER BY ord
@@ -106,6 +108,7 @@ impl Repository {
                 docker_image: row.docker_image,
                 work_dir: row.work_dir,
                 volume_mounts: mounts,
+                one_time: row.one_time
             });
         }
 

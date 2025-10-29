@@ -18,6 +18,7 @@ impl Repository {
                     docker_image,
                     work_dir,
                     volume_mounts,
+                    one_time,
                     created_at,
                     updated_at
                 FROM cards
@@ -25,6 +26,7 @@ impl Repository {
                 WHERE 
                     deck_name LIKE ? || '%'
                     AND next_review_s < strftime('%s', 'now')
+                    AND status >= 0
                 ORDER BY next_review_s, ord
             "#,
             prefix
@@ -43,6 +45,7 @@ impl Repository {
             command: res.command,
             docker_image: res.docker_image,
             work_dir: res.work_dir,
+            one_time: res.one_time,
         }))
     }
 

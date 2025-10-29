@@ -16,25 +16,26 @@ pub struct CardState {
     pub reps: i64,
     pub lapses: i64,
 
-    pub status: CardLearnStatus,
+    pub status: CardStatus,
     pub learning_step: i64,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Copy, Type)]
 #[repr(i64)]
 #[sqlx(type_name = "INTEGER")]
-pub enum CardLearnStatus {
+pub enum CardStatus {
+    OneTimeLearned = -3,
     New = 0,
     Learn = 1,
     Review = 2,
 }
 
-impl From<i64> for CardLearnStatus {
+impl From<i64> for CardStatus {
     fn from(value: i64) -> Self {
         match value {
-            1 => CardLearnStatus::Learn,
-            2 => CardLearnStatus::Review,
-            _ => CardLearnStatus::New,
+            1 => CardStatus::Learn,
+            2 => CardStatus::Review,
+            _ => CardStatus::New,
         }
     }
 }
@@ -59,12 +60,19 @@ const MAX_EASE: i64 = 3500;
 
 const EASY_MULT: f64 = 1.3;
 impl CardState {
-    pub fn apply_review(&mut self, review_result: ReviewResult) {
+    pub fn apply_review(&mut self, review_result: ReviewResult, one_time: bool) {
         self.learning_step = self.learning_step.clamp(0, LAST_LEARNING_STEP);
 
         self.reps += 1;
         if ReviewResult::Again == review_result {
             self.lapses += 1
+        }
+
+        if one_time {
+            if review_result != ReviewResult::Again {
+                self.status = CardStatus::OneTimeLearned;
+            }
+            return;
         }
 
         let now_s = SystemTime::now()
@@ -73,8 +81,8 @@ impl CardState {
             .as_secs() as i64;
         match self.status {
             // Learning
-            CardLearnStatus::New | CardLearnStatus::Learn => {
-                self.status = CardLearnStatus::Learn;
+            CardStatus::New | CardStatus::Learn => {
+                self.status = CardStatus::Learn;
                 match review_result {
                     ReviewResult::Again => {
                         self.learning_step = 0;
@@ -87,7 +95,7 @@ impl CardState {
                     ReviewResult::Good => {
                         self.learning_step += 1;
                         if self.learning_step > LAST_LEARNING_STEP {
-                            self.status = CardLearnStatus::Review;
+                            self.status = CardStatus::Review;
                             self.learning_step = 0;
                             self.interval_days = GRADUATING_DAYS;
                             self.next_review_s = now_s + GRADUATING_DAYS * DAY;
@@ -99,14 +107,15 @@ impl CardState {
                     ReviewResult::Easy => {
                         self.next_review_s = now_s + 4 * 24 * 60 * 60;
                         self.interval_days = 1;
-                        self.status = CardLearnStatus::Review;
+                        self.status = CardStatus::Review;
                     }
                 }
+
             }
             // Reviewing
-            CardLearnStatus::Review => match review_result {
+            CardStatus::Review => match review_result {
                 ReviewResult::Again => {
-                    self.status = CardLearnStatus::Learn;
+                    self.status = CardStatus::Learn;
                     self.learning_step = 0;
                     self.ease = (self.ease - 200).max(MIN_EASE);
                     self.interval_days = 1;
@@ -129,6 +138,7 @@ impl CardState {
                     self.next_review_s = now_s + self.interval_days * DAY;
                 }
             },
+            CardStatus::OneTimeLearned => {}
         }
     }
 }
@@ -137,7 +147,7 @@ impl CardState {
 mod test {
     use std::time::{SystemTime, UNIX_EPOCH};
 
-    use super::{CardLearnStatus, CardState, DAY, MIN, ReviewResult};
+    use super::{CardStatus, CardState, DAY, MIN, ReviewResult};
 
     fn state_new() -> CardState {
         CardState {
@@ -150,7 +160,7 @@ mod test {
             ease: 2500,
             reps: 0,
             lapses: 0,
-            status: CardLearnStatus::New,
+            status: CardStatus::New,
             learning_step: 0,
         }
     }
@@ -166,7 +176,7 @@ mod test {
             ease: 2500,
             reps: 0,
             lapses: 0,
-            status: CardLearnStatus::Review,
+            status: CardStatus::Review,
             learning_step: 0,
         }
     }
@@ -174,18 +184,19 @@ mod test {
     fn run_test_state(
         mut card_state: CardState,
         apply: Vec<ReviewResult>,
-        status: CardLearnStatus,
+        status: CardStatus,
         learning_step: i64,
         interval_days: i64,
         interval: i64,
         ease: i64,
+        one_time: bool
     ) {
         let now_s = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_secs() as i64;
         for review in apply {
-            card_state.apply_review(review);
+            card_state.apply_review(review, one_time);
         }
 
         assert_eq!(card_state.status, status);
@@ -211,15 +222,66 @@ mod test {
                 run_test_state(
                     $init,
                     vec![$( ReviewResult::$res ),*],
-                    CardLearnStatus::$status,
+                    CardStatus::$status,
                     $ls,
                     $ivl,
                     $add,
-                    $ease
+                    $ease,
+                    false
+                )
+            }
+        };
+        (
+            $func:ident,
+            $init:expr,
+            [ $($res:ident),* $(,)? ],
+            status: $status:ident,
+            learning_step: $ls:expr,
+            interval_days: $ivl:expr,
+            added_time_s: $add:expr,
+            ease: $ease:expr $(,)?,
+            one_time
+        ) => {
+            #[test]
+            fn $func() {
+                run_test_state(
+                    $init,
+                    vec![$( ReviewResult::$res ),*],
+                    CardStatus::$status,
+                    $ls,
+                    $ivl,
+                    $add,
+                    $ease,
+                    true,
                 )
             }
         };
     }
+
+    // One time card
+    test_state!(
+        test_state_one_time_again,
+        state_new(),
+        [Again],
+        status: Learn,
+        learning_step: 0,
+        interval_days: 1,
+        added_time_s: 1 * MIN,
+        ease: 2500,
+        one_time
+    );
+
+    test_state!(
+        test_state_one_time_good,
+        state_new(),
+        [Good],
+        status: OneTimeLearned,
+        learning_step: 0,
+        interval_days: 1,
+        added_time_s: 0 * MIN,
+        ease: 2500,
+        one_time
+    );
 
     // New
     // new -> again

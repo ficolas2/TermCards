@@ -10,4 +10,6 @@ pub struct Card {
     pub command: Option<String>,
     pub docker_image: String,
     pub work_dir: Option<String>,
+    #[serde(default)]
+    pub one_time: bool,
 }
