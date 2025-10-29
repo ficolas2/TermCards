@@ -21,10 +21,13 @@ pub enum CardImportError {
 }
 
 impl Service {
-    pub async fn import_deck<P: AsRef<Path>>(&self, path: P) -> Result<Deck, CardImportError> {
+    pub fn read_deck_from_file<P: AsRef<Path>>(&self, path: P) -> Result<Deck, CardImportError> {
         let data = fs::read_to_string(path)?;
-        let deck: Deck = toml::from_str(&data)?;
+        Ok(toml::from_str(&data)?)
+    }
 
+    pub async fn import_deck<P: AsRef<Path>>(&self, path: P) -> Result<Deck, CardImportError> {
+        let deck = self.read_deck_from_file(path)?;
         let deck = self.repository.save_deck(deck).await?;
 
         Ok(deck)

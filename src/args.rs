@@ -14,4 +14,6 @@ pub enum Commands {
     Review { deck_name: String },
     #[command(about = "Get the state of a deck")]
     State { deck_name: String },
+    #[command(about = "Test a deck without importing it")]
+    TestDeck { path: String },
 }

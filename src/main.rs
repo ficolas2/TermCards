@@ -46,6 +46,10 @@ async fn main() -> anyhow::Result<()> {
         Commands::State { deck_name } => {
             print_deck_state(&deck_name, service.get_deck_state(&deck_name).await?)
         }
+        Commands::TestDeck { path } => {
+            let deck = service.read_deck_from_file(path)?;
+            service.review_full_deck(deck);
+        }
     };
     Ok(())
 }
